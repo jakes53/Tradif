@@ -81,11 +81,11 @@ export default function CreateAccount() {
   return (
     <div
       className="min-h-screen bg-cover bg-center flex items-center justify-center"
-      style={{ backgroundImage: "url('/your-background.jpg')" }}
+      style={{ backgroundImage: "url('./your-background.jpg')" }}
     >
       <div className="bg-white bg-opacity-80 backdrop-blur-md shadow-xl rounded-xl p-4 w-full max-w-md mx-4">
         {/* Logo */}
-        <img src="/tradefiylogo.png" alt="TraDify Logo" className="mx-auto h-44 mb-0" />
+        <img src="./tradefiylogo.png" alt="TraDify Logo" className="mx-auto h-44 mb-0" />
 
         <h2 className="text-2xl font-bold text-center mb-1">Create Account</h2>
         <p className="text-sm text-gray-600 text-center mb-6">

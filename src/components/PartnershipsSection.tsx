@@ -44,7 +44,7 @@ const PartnershipsSection = () => {
         {/* Call to Action */}
         <div
           className="bg-feature-gradient rounded-2xl p-8 md:p-12 bg-cover bg-center relative overflow-hidden"
-          style={{ backgroundImage: "url('/geminipc.png')" }}
+          style={{ backgroundImage: "url('./geminipc.png')" }}
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl z-0"></div>
           <div className="relative z-10 text-center">

@@ -63,7 +63,7 @@ const Navigation = () => {
               <div className={`${isMobile ? "pl-0" : "pl-4"} flex items-center`}>
                 {isMobile ? (
                   <img
-                    src="/tradefiylogo.png"
+                    src="./tradefiylogo.png"
                     alt="TraDify Logo"
                     className="h-28 w-auto"
                   />

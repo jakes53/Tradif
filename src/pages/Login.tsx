@@ -52,11 +52,11 @@ export default function Login() {
   return (
     <div
       className="min-h-screen bg-cover bg-center flex items-center justify-center"
-      style={{ backgroundImage: "url('/your-background.jpg')" }}
+      style={{ backgroundImage: "url('./your-background.jpg')" }}
     >
       <div className="bg-white bg-opacity-80 backdrop-blur-md shadow-xl rounded-xl p-8 w-full max-w-md mx-4">
         {/* Logo */}
-        <img src="/tradefiylogo.png" alt="TraDify Logo" className="mx-auto h-44 mb-2" />
+        <img src="./tradefiylogo.png" alt="TraDify Logo" className="mx-auto h-44 mb-2" />
 
         <h2 className="text-2xl font-bold text-center mb-1">
           {mode === 'login' ? 'Sign In' : 'Reset Password'}
