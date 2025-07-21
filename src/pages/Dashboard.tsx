@@ -286,7 +286,7 @@ const Dashboard = () => {
 )}
 {/* 🔥 Feature Navigation Buttons with Icons */}
 <div className="mb-8">
-  <h3 className="text-lg font-semibold mb-4">Explore Our Features</h3>
+  <h3 className="text-lg font-semibold mb-4">Explore Our </h3>
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
     <Button
       variant="outline"
