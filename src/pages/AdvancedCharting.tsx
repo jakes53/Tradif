@@ -48,7 +48,7 @@ const AdvancedCharting = () => {
             </div>
 
             <div className="crypto-card p-8">
-              <img src="./officejpg.png" alt="Advanced Chart Tools" className="rounded-xl w-full object-cover shadow-lg" />
+              <img src="/officejpg.png" alt="Advanced Chart Tools" className="rounded-xl w-full object-cover shadow-lg" />
             </div>
           </div>
 
@@ -56,7 +56,7 @@ const AdvancedCharting = () => {
           <div className="relative rounded-2xl overflow-hidden mb-20">
             <div
               className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: "url('./tools-bg.png')" }}
+              style={{ backgroundImage: "url('/tools-bg.png')" }}
             >
               <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
             </div>

@@ -97,7 +97,7 @@ const Arbitrage = () => {
   {/* Background Image and Overlay */}
   <div
     className="absolute inset-0 bg-cover bg-center"
-    style={{ backgroundImage: "url('./cry3.png')" }} // Replace with your actual image path
+    style={{ backgroundImage: "url('/cry3.png')" }} // Replace with your actual image path
   >
     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
   </div>

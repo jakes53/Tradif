@@ -6,7 +6,7 @@ const AdvancedTrading = () => {
   return (
     <section
       className="relative min-h-screen py-20 text-white px-6 md:px-24 bg-cover bg-center"
-      style={{ backgroundImage: "url('./cry4.jpg')" }} // Replace with your image path
+      style={{ backgroundImage: "url('/cry4.jpg')" }} // Replace with your image path
     >
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-0 rounded-none md:rounded-xl"></div>
