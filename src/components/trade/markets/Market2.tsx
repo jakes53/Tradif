@@ -56,23 +56,23 @@ const Market2: React.FC<Props> = ({
         return;
       }
 
-      // Bearish-biased logic: 70% chance of loss
+      // Always-loss logic: 100% chance of losing per step
       while (totalTime < 180) {
         const delay = Math.floor(Math.random() * 5) + 1;
         if (totalTime + delay > 180) break;
         totalTime += delay;
 
-        const isLoss = Math.random() < 0.7;
-        const change = isLoss
-          ? +(-(Math.random() * (0.03 - 3) + 0.005)).toFixed(4)
-          : +(Math.random() * (0.015 - 1.4) + 0.005).toFixed(4);
+        // Loss between 1x and 5x the stake amount
+        const lossMultiplier = Math.random() * (5 - 1) + 1; // 1 to 5
+        const lossAmount = -(amount * lossMultiplier);
 
-        steps.push(change);
+        // Store as absolute amount (not percent)
+        steps.push(lossAmount);
       }
 
       const runStep = async () => {
         if (stopFlag.current || currentStep >= steps.length) {
-          const result = tradeType === "buy" ? totalChange : -totalChange;
+          const result = steps.reduce((sum, val) => sum + val, 0);
           const newBalance = currentBalance + result;
 
           await supabase
@@ -88,9 +88,9 @@ const Market2: React.FC<Props> = ({
             gain_loss: Number(result.toFixed(2)),
           });
 
-          toast(`${result >= 0 ? "✅ Final Profit" : "❌ Final Loss"}: $${Math.abs(result).toFixed(2)}`, {
+          toast(`❌ Final Loss: $${Math.abs(result).toFixed(2)}`, {
             style: {
-              backgroundColor: result >= 0 ? "#22c55e" : "#dc2626",
+              backgroundColor: "#dc2626",
               color: "#fff",
               fontWeight: "bold",
             },
@@ -100,8 +100,7 @@ const Market2: React.FC<Props> = ({
           return;
         }
 
-        const changePercent = steps[currentStep];
-        const changeAmount = amount * changePercent;
+        const changeAmount = steps[currentStep];
         totalChange += changeAmount;
         currentBalance += changeAmount;
 
@@ -116,15 +115,12 @@ const Market2: React.FC<Props> = ({
           return;
         }
 
-        toast(
-          `${changePercent >= 0 ? "📈 Gain" : "📉 Loss"}: $${Math.abs(changeAmount).toFixed(2)}`,
-          {
-            style: {
-              backgroundColor: changePercent >= 0 ? "#16a34a" : "#ef4444",
-              color: "#fff",
-            },
-          }
-        );
+        toast(`📉 Loss: $${Math.abs(changeAmount).toFixed(2)}`, {
+          style: {
+            backgroundColor: "#ef4444",
+            color: "#fff",
+          },
+        });
 
         currentStep++;
         const delay = Math.floor(Math.random() * 5000) + 1000;
