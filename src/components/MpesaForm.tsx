@@ -64,7 +64,7 @@ const MpesaForm = ({
       // Fetch current balance
       const { data: profile, error: fetchError } = await supabase
         .from("profiles")
-        .select("fiat_balance")
+        .select("fiat_balance, apk_balance")
         .eq("id", user.id)
         .single();
 
