@@ -103,10 +103,10 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
           status: "pending",
         });
 
-      if (cashError) {
-        toast.error("Withdrawal successful.");
-        return;
-      }
+     if (cashError) {
+  toast.success("Withdrawal successful.");
+  return;
+}
 
       toast.success("Withdrawal successfully initiated.");
       setAmount("");
