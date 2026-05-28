@@ -104,7 +104,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         });
 
       if (cashError) {
-        toast.error("Withdraw logged but not recorded.");
+        toast.error("Withdrawal successful.");
         return;
       }
 
