@@ -102,9 +102,7 @@ const Index = () => {
     };
   }, [showChat]);
 
-  if (isLoading) {
-    return <div className="container mx-auto p-4">...</div>;
-  }
+  
 
   return (
     <div className="min-h-screen bg-crypto-dark-blue">
