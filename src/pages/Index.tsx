@@ -142,43 +142,10 @@ const Index = () => {
       <CallToAction />
       <Footer />
 
-      {/* Hide Chat Button */}
-      {showChat && (
-        <button
-          onClick={() => {
-            setShowChat(false);
-
-            const tawkFrame = document.querySelector('iframe[title="chat widget"]');
-            if (tawkFrame?.parentElement) tawkFrame.parentElement.remove();
-
-            const tawkScript = document.querySelector('script[src*="tawk.to"]');
-            if (tawkScript) tawkScript.remove();
-
-            delete window.Tawk_API;
-          }}
-          className="fixed z-50 left-6 top-[calc(50%+200px)] bg-grey-600 hover:bg-grey-700 text-white px-2 py-1 rounded text-sm font-semibold shadow-md transition"
-        >
-          ✖ Hide Chat
-        </button>
-      )}
+      
 
       {/* Floating Telegram Icon */}
-      <a
-        href="https://t.me/TraDifySupport"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed z-50 left-6 top-1/2 -translate-y-1/2 flex items-center bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:shadow-2xl hover:from-blue-600 hover:to-cyan-500 transition-all duration-300 ease-in-out animate-float-slow"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="currentColor"
-          viewBox="0 0 24 24"
-          className="w-5 h-5 mr-2"
-        >
-          <path d="M9.036 15.52l-.369 5.207c.528 0 .757-.229 1.037-.504l2.484-2.387 5.15 3.766c.944.521 1.615.25 1.851-.872l3.358-15.812c.306-1.42-.526-1.976-1.444-1.628l-20.096 7.72c-1.37.521-1.357 1.267-.234 1.604l5.138 1.607 11.88-7.482c.561-.379 1.073-.169.652.209L9.036 15.52z" />
-        </svg>
-        <span className="font-medium text-sm">Join Telegram</span>
-      </a>
+      
     </div>
   );
 };
