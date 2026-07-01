@@ -77,19 +77,7 @@ const Index = () => {
 
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_API.onLoad = function () {
-      window.Tawk_API?.setAttributes?.(
-        {
-          welcomeMessage:
-            "👋 Hi! Welcome to TraDify Support.",
-        },
-        function (error?: unknown) {
-          if (error instanceof Error) {
-            console.error("Tawk.to message error:", error.message);
-          } else if (error) {
-            console.error("Tawk.to message error:", error);
-          }
-        }
-      );
+      
 
       window.Tawk_API?.addEvent?.("trigger-message");
 
