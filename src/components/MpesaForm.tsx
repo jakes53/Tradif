@@ -51,26 +51,33 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         return;
       }
 
-      // ─────────────── DEPOSIT ───────────────
-      if (type === "Deposit") {
-        const { error } = await supabase.from("tradify_cash").insert({
-          uid: user.id,
-          type: "Cash Deposit",
-          amount: numericAmount,
-          phone,
-          status: "pending",
-        });
+      // ─────────────── DEPOSIT (MPESA STK) ───────────────
+if (type === "Deposit") {
+  const res = await fetch(
+    "https://YOUR_PROJECT_ID.supabase.co/functions/v1/mpesa-deposit",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: user.id,
+        phone,
+        amount: numericAmount,
+      }),
+    }
+  );
 
-        if (error) {
-          toast.error(error.message);
-          return;
-        }
+  const data = await res.json();
 
-        toast.success("Deposit request sent. Await confirmation.");
-        setAmount("");
-        setPhone("");
-        return;
-      }
+  if (!res.ok || !data.success) {
+    toast.error("Failed to send STK push.");
+    return;
+  }
+
+  toast.success("Check your phone to complete payment.");
+  setAmount("");
+  setPhone("");
+  return;
+}
 
       // ─────────────── WITHDRAW ───────────────
       if (numericAmount > profile.fiat_balance) {
