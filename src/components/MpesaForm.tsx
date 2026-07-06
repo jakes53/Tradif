@@ -54,7 +54,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
       // ─────────────── DEPOSIT (MPESA STK) ───────────────
 if (type === "Deposit") {
   const res = await fetch(
-    "https://YOUR_PROJECT_ID.supabase.co/functions/v1/mpesa-deposit",
+    "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
