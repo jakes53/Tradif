@@ -1,30 +1,37 @@
-import { serve } from "https://deno.land/std/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// ───────── CORS ─────────
+// ───────────────── CORS ─────────────────
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// ───────── ENV ─────────
+// ───────────────── ENV ─────────────────
 const PROJECT_URL = Deno.env.get("PROJECT_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const PAYHERO_BASIC_AUTH = Deno.env.get("PAYHERO_BASIC_AUTH")!;
 const PAYHERO_ACCOUNT_ID = Deno.env.get("PAYHERO_ACCOUNT_ID")!;
 
-// ───────── CLIENT ─────────
+// ───────────────── CLIENT ─────────────────
 const supabase = createClient(PROJECT_URL, SERVICE_ROLE_KEY);
 
+// ───────────────── HELPERS ─────────────────
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...corsHeaders },
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+    },
   });
 }
 
+// ───────────────── MAIN ─────────────────
 serve(async (req) => {
+  // ✅ CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -32,7 +39,7 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
 
-    // ───── CALLBACK ─────
+    // ───────── CALLBACK ─────────
     if (url.pathname.endsWith("/callback")) {
       const payload = await req.json();
 
@@ -55,10 +62,12 @@ serve(async (req) => {
         .eq("id", tx.uid)
         .single();
 
+      if (!profile) return json({ received: true });
+
       await supabase
         .from("profiles")
         .update({
-          fiat_balance: (profile?.fiat_balance || 0) + tx.amount,
+          fiat_balance: (profile.fiat_balance || 0) + tx.amount,
         })
         .eq("id", tx.uid);
 
@@ -70,22 +79,33 @@ serve(async (req) => {
       return json({ success: true });
     }
 
-    // ───── STK PUSH ─────
-    const { uid, phone, amount } = await req.json();
+    // ───────── STK INIT ─────────
+    if (req.method !== "POST") {
+      return json({ error: "Method not allowed" }, 405);
+    }
+
+    const body = await req.json();
+    const { uid, phone, amount } = body;
 
     if (!uid || !phone || !amount) {
-      return json({ error: "Missing fields" }, 400);
+      return json({ error: "Missing fields", body }, 400);
     }
 
     const reference = `DEP-${crypto.randomUUID().slice(0, 8)}`;
 
-    await supabase.from("tradify_pesa").insert({
-      uid,
-      phone,
-      amount,
-      reference,
-      status: "pending",
-    });
+    const { error: insertError } = await supabase
+      .from("tradify_pesa")
+      .insert({
+        uid,
+        phone,
+        amount,
+        reference,
+        status: "pending",
+      });
+
+    if (insertError) {
+      return json({ error: insertError.message }, 500);
+    }
 
     const res = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
       method: "POST",
@@ -111,12 +131,16 @@ serve(async (req) => {
         .update({ status: "failed" })
         .eq("reference", reference);
 
-      return json({ error: "STK push failed" }, 400);
+      return json({ error: "STK push failed", data }, 400);
     }
 
-    return json({ success: true, reference });
+    return json({
+      success: true,
+      message: "STK push sent",
+      reference,
+    });
   } catch (err) {
-    console.error(err);
-    return json({ error: "Server error" }, 500);
+    console.error("EDGE ERROR:", err);
+    return json({ error: "Internal server error" }, 500);
   }
 });

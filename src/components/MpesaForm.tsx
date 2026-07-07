@@ -13,7 +13,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const numericAmount = parseFloat(amount);
+  const numericAmount = Number(amount);
 
   // ───────────────── VALIDATION ─────────────────
   const isInvalidPhone =
@@ -29,52 +29,37 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
     try {
       setLoading(true);
 
+      // 🔐 ensure user session exists
       const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (authError || !user) {
+      if (!session) {
         toast.error("User not authenticated.");
         return;
       }
 
-      // Fetch balances
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("fiat_balance, apk_balance")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile) {
-        toast.error("Failed to fetch user balances.");
-        return;
-      }
-
-      // ─────────────── DEPOSIT (MPESA STK) ───────────────
+      // ─────────────── DEPOSIT ───────────────
       if (type === "Deposit") {
         const res = await fetch(
-          "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mpesa-deposit`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, // ✅ ADDED
+              // ✅ THIS is the correct auth header
+              Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              uid: user.id,
               phone,
               amount: numericAmount,
             }),
           }
         );
 
-        const text = await res.text();
-        console.log("MPESA RESPONSE:", text);
-        console.log("STATUS:", res.status);
-        const data = JSON.parse(text);
+        const data = await res.json();
 
-        if (!res.ok || !data.success) {
+        if (!res.ok) {
           toast.error(data.error || "Failed to send STK push.");
           return;
         }
@@ -86,41 +71,41 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
       }
 
       // ─────────────── WITHDRAW ───────────────
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("fiat_balance, apk_balance")
+        .single();
+
+      if (profileError || !profile) {
+        toast.error("Failed to fetch balance.");
+        return;
+      }
+
       if (numericAmount > profile.fiat_balance) {
         toast.error("Insufficient balance.");
         return;
       }
 
-      // 1️⃣ Update balances
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
           fiat_balance: profile.fiat_balance - numericAmount,
           apk_balance: (profile.apk_balance || 0) + numericAmount,
-        })
-        .eq("id", user.id);
+        });
 
       if (updateError) {
         toast.error(updateError.message);
         return;
       }
 
-      // 2️⃣ Log withdraw request
-      const { error: cashError } = await supabase
-        .from("tradify_pesa")
-        .insert({
-          user_id: user.id,
-          type: "Cash Withdraw",
-          amount: numericAmount,
-          phone,
-          status: "pending",
-        });
+      await supabase.from("tradify_pesa").insert({
+        amount: numericAmount,
+        phone,
+        type: "withdraw",
+        status: "pending",
+      });
 
-      if (cashError) {
-        console.error("Log error:", cashError);
-      }
-
-      toast.success("Withdrawal successfully initiated.");
+      toast.success("Withdrawal request submitted.");
       setAmount("");
       setPhone("");
     } catch (err) {
