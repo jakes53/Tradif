@@ -15,7 +15,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
 
   const numericAmount = Number(amount);
 
-  // ───────────────── VALIDATION ─────────────────
+  // ───────────── VALIDATION ─────────────
   const isInvalidPhone =
     phone.length !== 12 || !phone.startsWith("254") || isNaN(Number(phone));
 
@@ -24,12 +24,14 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
 
   const disableButton = isInvalidPhone || isInvalidAmount || loading;
 
-  // ───────────────── SUBMIT ─────────────────
+  // ───────────── SUBMIT ─────────────
   const handleSubmit = async () => {
-    try {
-      setLoading(true);
+    if (disableButton) return;
 
-      // 🔐 ensure user session exists
+    setLoading(true);
+
+    try {
+      // 🔐 ensure user is authenticated
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -39,7 +41,9 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         return;
       }
 
-      // ─────────────── DEPOSIT ───────────────
+      const cleanPhone = phone.trim();
+
+      // ───────────── DEPOSIT ─────────────
       if (type === "Deposit") {
         const res = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mpesa-deposit`,
@@ -47,12 +51,12 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              // ✅ THIS is the correct auth header
               Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              phone,
+              phone: cleanPhone,
               amount: numericAmount,
+              type: "deposit", // ✅ REQUIRED
             }),
           }
         );
@@ -60,7 +64,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         const data = await res.json();
 
         if (!res.ok) {
-          toast.error(data.error || "Failed to send STK push.");
+          toast.error(data?.error || "Failed to send STK push.");
           return;
         }
 
@@ -70,7 +74,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         return;
       }
 
-      // ─────────────── WITHDRAW ───────────────
+      // ───────────── WITHDRAW ─────────────
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("fiat_balance, apk_balance")
@@ -91,19 +95,28 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         .update({
           fiat_balance: profile.fiat_balance - numericAmount,
           apk_balance: (profile.apk_balance || 0) + numericAmount,
-        });
+        })
+        .eq("id", session.user.id);
 
       if (updateError) {
         toast.error(updateError.message);
         return;
       }
 
-      await supabase.from("tradify_pesa").insert({
-        amount: numericAmount,
-        phone,
-        type: "withdraw",
-        status: "pending",
-      });
+      const { error: insertError } = await supabase
+        .from("tradify_pesa")
+        .insert({
+          amount: numericAmount,
+          phone: cleanPhone,
+          type: "withdraw", // ✅ REQUIRED
+          status: "pending",
+          user_id: session.user.id,
+        });
+
+      if (insertError) {
+        toast.error(insertError.message);
+        return;
+      }
 
       toast.success("Withdrawal request submitted.");
       setAmount("");
@@ -116,7 +129,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
     }
   };
 
-  // ───────────────── UI ─────────────────
+  // ───────────── UI ─────────────
   return (
     <div className="w-full max-w-md mx-auto bg-[#0f172a] border border-white/10 rounded-xl p-4 space-y-4">
       <h2 className="text-white font-semibold text-lg">
