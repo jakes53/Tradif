@@ -54,19 +54,22 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
       // ─────────────── DEPOSIT (MPESA STK) ───────────────
 if (type === "Deposit") {
   const res = await fetch(
-    "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        uid: user.id,
-        phone,
-        amount: numericAmount,
-      }),
-    }
-  );
+  "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      uid: user.id,
+      phone,
+      amount: numericAmount,
+    }),
+  }
+);
 
-  const data = await res.json();
+  const text = await res.text();
+console.log("MPESA RESPONSE:", text);
+const data = JSON.parse(text);
+console.log("STATUS:", res.status);
 
   if (!res.ok || !data.success) {
     toast.error("Failed to send STK push.");
@@ -101,7 +104,7 @@ if (type === "Deposit") {
 
       // 2️⃣ Log withdraw request
       const { error: cashError } = await supabase
-        .from("tradify_cash")
+        .from("tradify_pesa")
         .insert({
           uid: user.id,
           type: "Cash Withdraw",
