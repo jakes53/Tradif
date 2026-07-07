@@ -52,35 +52,35 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
       }
 
       // ─────────────── DEPOSIT (MPESA STK) ───────────────
-if (type === "Deposit") {
-  const res = await fetch(
-  "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      uid: user.id,
-      phone,
-      amount: numericAmount,
-    }),
-  }
-);
+      if (type === "Deposit") {
+        const res = await fetch(
+          "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: user.id, // ✅ fixed: was uid
+              phone,
+              amount: numericAmount,
+            }),
+          }
+        );
 
-  const text = await res.text();
-console.log("MPESA RESPONSE:", text);
-const data = JSON.parse(text);
-console.log("STATUS:", res.status);
+        const text = await res.text();
+        console.log("MPESA RESPONSE:", text);
+        const data = JSON.parse(text);
+        console.log("STATUS:", res.status);
 
-  if (!res.ok || !data.success) {
-    toast.error("Failed to send STK push.");
-    return;
-  }
+        if (!res.ok || !data.success) {
+          toast.error("Failed to send STK push.");
+          return;
+        }
 
-  toast.success("Check your phone to complete payment.");
-  setAmount("");
-  setPhone("");
-  return;
-}
+        toast.success("Check your phone to complete payment.");
+        setAmount("");
+        setPhone("");
+        return;
+      }
 
       // ─────────────── WITHDRAW ───────────────
       if (numericAmount > profile.fiat_balance) {
@@ -93,7 +93,7 @@ console.log("STATUS:", res.status);
         .from("profiles")
         .update({
           fiat_balance: profile.fiat_balance - numericAmount,
-          apk_balance: (profile.apk_balance || 0) + numericAmount, // ✅ ACCUMULATE
+          apk_balance: (profile.apk_balance || 0) + numericAmount,
         })
         .eq("id", user.id);
 
@@ -106,17 +106,17 @@ console.log("STATUS:", res.status);
       const { error: cashError } = await supabase
         .from("tradify_pesa")
         .insert({
-          uid: user.id,
+          user_id: user.id, // ✅ fixed: was uid
           type: "Cash Withdraw",
           amount: numericAmount,
           phone,
           status: "pending",
         });
 
-     if (cashError) {
-  toast.success("Withdrawal successful.");
-  return;
-}
+      if (cashError) {
+        console.error("Log error:", cashError);
+        // non-blocking — balance already updated
+      }
 
       toast.success("Withdrawal successfully initiated.");
       setAmount("");
