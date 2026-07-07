@@ -62,7 +62,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
               "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, // ✅ ADDED
             },
             body: JSON.stringify({
-              user_id: user.id,
+              uid: user.id,
               phone,
               amount: numericAmount,
             }),
