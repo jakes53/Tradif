@@ -57,9 +57,12 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
           "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`, // ✅ ADDED
+            },
             body: JSON.stringify({
-              user_id: user.id, // ✅ fixed: was uid
+              user_id: user.id,
               phone,
               amount: numericAmount,
             }),
@@ -68,11 +71,11 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
 
         const text = await res.text();
         console.log("MPESA RESPONSE:", text);
-        const data = JSON.parse(text);
         console.log("STATUS:", res.status);
+        const data = JSON.parse(text);
 
         if (!res.ok || !data.success) {
-          toast.error("Failed to send STK push.");
+          toast.error(data.error || "Failed to send STK push.");
           return;
         }
 
@@ -106,7 +109,7 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
       const { error: cashError } = await supabase
         .from("tradify_pesa")
         .insert({
-          user_id: user.id, // ✅ fixed: was uid
+          user_id: user.id,
           type: "Cash Withdraw",
           amount: numericAmount,
           phone,
@@ -115,7 +118,6 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
 
       if (cashError) {
         console.error("Log error:", cashError);
-        // non-blocking — balance already updated
       }
 
       toast.success("Withdrawal successfully initiated.");
