@@ -16,12 +16,13 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
   const numericAmount = Number(amount);
 
   const isInvalidPhone =
-    phone.length !== 12 || !phone.startsWith("254") || isNaN(Number(phone));
+    !(phone.startsWith("254") || phone.startsWith("07"));
 
   const isInvalidAmount =
     !amount || isNaN(numericAmount) || numericAmount <= 0;
 
-  const disableButton = isInvalidPhone || isInvalidAmount || loading;
+  const disableButton =
+    loading || isInvalidPhone || isInvalidAmount;
 
   const handleSubmit = async () => {
     try {
@@ -29,91 +30,95 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
 
       const {
         data: { session },
-        error: sessionError,
       } = await supabase.auth.getSession();
 
-      if (sessionError || !session) {
-        toast.error("Session expired. Please login again.");
+      if (!session) {
+        toast.error("Please log in.");
         return;
       }
 
-      // ─────────────── DEPOSIT ───────────────
+      // ---------------- Deposit ----------------
       if (type === "Deposit") {
         const res = await fetch(
           "https://nadvttfktpqhjsnwoekr.supabase.co/functions/v1/mpesa-deposit",
           {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
               Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              user_id: session.user.id, // ✅ added
               phone,
               amount: numericAmount,
             }),
           }
         );
 
-        const text = await res.text();
-        console.log("MPESA RESPONSE:", text);
-        console.log("STATUS:", res.status);
+        const data = await res.json();
 
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          toast.error("Unexpected response from server.");
-          return;
-        }
+        console.log("STATUS", res.status);
+        console.log(data);
 
         if (!res.ok) {
-          toast.error(data.error || "Failed to send STK push.");
+          toast.error(data.error || "STK request failed");
           return;
         }
 
-        toast.success("Check your phone to complete payment.");
+        toast.success("STK sent. Check your phone.");
         setPhone("");
         setAmount("");
         return;
       }
 
-      // ─────────────── WITHDRAW ───────────────
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("fiat_balance, apk_balance")
-        .eq("id", session.user.id)
-        .single();
+      // ---------------- Withdraw ----------------
+const { data: profile, error: profileError } = await supabase
+  .from("profiles")
+  .select("fiat_balance, apk_balance")
+  .eq("id", session.user.id)
+  .single();
 
-      if (profileError || !profile) {
-        toast.error("Failed to fetch balance.");
-        return;
-      }
+if (profileError || !profile) {
+  toast.error("Failed to fetch user balances.");
+  return;
+}
 
-      if (numericAmount > profile.fiat_balance) {
-        toast.error("Insufficient balance.");
-        return;
-      }
+if (numericAmount > profile.fiat_balance) {
+  toast.error("Insufficient balance.");
+  return;
+}
 
-      const { error: withdrawError } = await supabase
-        .from("tradify_pesa")
-        .insert({
-          uid: session.user.id,
-          phone,
-          amount: numericAmount,
-          type: "withdraw",
-          status: "pending",
-        });
+// 1️⃣ Update balances
+const { error: updateError } = await supabase
+  .from("profiles")
+  .update({
+    fiat_balance: profile.fiat_balance - numericAmount,
+    apk_balance: (profile.apk_balance || 0) + numericAmount,
+  })
+  .eq("id", session.user.id);
 
-      if (withdrawError) {
-        console.error("Withdraw log error:", withdrawError);
-        toast.error("Failed to submit withdrawal.");
-        return;
-      }
+if (updateError) {
+  toast.error(updateError.message);
+  return;
+}
 
-      toast.success("Withdrawal request submitted.");
-      setPhone("");
-      setAmount("");
+// 2️⃣ Log withdraw request
+const { error: cashError } = await supabase
+  .from("tradify_pesa")
+  .insert({
+    user_id: session.user.id,
+    type: "Cash Withdraw",
+    amount: numericAmount,
+    phone,
+    status: "pending",
+  });
+
+if (cashError) {
+  console.error("Log error:", cashError);
+}
+
+toast.success("Withdrawal successfully initiated.");
+setAmount("");
+setPhone("");
     } catch (err) {
       console.error(err);
       toast.error("Something went wrong.");
@@ -124,36 +129,40 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
 
   return (
     <div className="w-full max-w-md mx-auto bg-[#0f172a] border border-white/10 rounded-xl p-4 space-y-4">
-      <h2 className="text-white font-semibold text-lg">
-        {type === "Deposit" ? "M-Pesa Deposit" : "M-Pesa Withdraw"}
+
+      <h2 className="text-white text-lg font-semibold">
+        {type === "Deposit"
+          ? "M-Pesa Deposit"
+          : "M-Pesa Withdraw"}
       </h2>
 
       <Input
-        placeholder="2547XXXXXXXX"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
+        placeholder="254712345678"
         className="bg-[#020617] border-white/10 text-white"
       />
 
       <Input
-        placeholder="Amount"
+        type="number"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        type="number"
+        placeholder="Amount"
         className="bg-[#020617] border-white/10 text-white"
       />
 
       <Button
         onClick={handleSubmit}
         disabled={disableButton}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+        className="w-full bg-blue-600 hover:bg-blue-700"
       >
         {loading
           ? "Processing..."
           : type === "Deposit"
           ? "Deposit via M-Pesa"
-          : "Withdraw to M-Pesa"}
+          : "Withdraw"}
       </Button>
+
     </div>
   );
-}
+}   
