@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// ───────────────── CORS ─────────────────
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -9,16 +8,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// ───────────────── ENV ─────────────────
 const PROJECT_URL = Deno.env.get("PROJECT_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const PAYHERO_BASIC_AUTH = Deno.env.get("PAYHERO_BASIC_AUTH")!;
-const PAYHERO_ACCOUNT_ID = Deno.env.get("PAYHERO_ACCOUNT_ID")!;
+const PAYHERO_CHANNEL_ID = Deno.env.get("PAYHERO_CHANNEL_ID")!;
 
-// ───────────────── CLIENT ─────────────────
-const supabase = createClient(PROJECT_URL, SERVICE_ROLE_KEY);
+const admin = createClient(PROJECT_URL, SERVICE_ROLE_KEY);
 
-// ───────────────── HELPERS ─────────────────
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -29,118 +25,135 @@ function json(data: unknown, status = 200) {
   });
 }
 
-// ───────────────── MAIN ─────────────────
 serve(async (req) => {
-  // ✅ CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", {
+      headers: corsHeaders,
+    });
   }
 
   try {
-    const url = new URL(req.url);
+    // -----------------------------
+    // Authenticate User
+    // -----------------------------
+    const token = req.headers
+      .get("Authorization")
+      ?.replace("Bearer ", "");
 
-    // ───────── CALLBACK ─────────
-    if (url.pathname.endsWith("/callback")) {
-      const payload = await req.json();
+    if (!token) {
+      return json({ error: "User not authenticated." }, 401);
+    }
 
-      if (!payload?.reference || payload?.status !== "SUCCESS") {
-        return json({ received: true });
+    const authClient = createClient(
+      PROJECT_URL,
+      Deno.env.get("ANON_KEY")!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       }
+    );
 
-      const { data: tx } = await supabase
-        .from("tradify_pesa")
-        .select("id, uid, amount")
-        .eq("reference", payload.reference)
-        .eq("status", "pending")
-        .single();
+    const {
+      data: { user },
+      error: authError,
+    } = await authClient.auth.getUser();
 
-      if (!tx) return json({ received: true });
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("fiat_balance")
-        .eq("id", tx.uid)
-        .single();
-
-      if (!profile) return json({ received: true });
-
-      await supabase
-        .from("profiles")
-        .update({
-          fiat_balance: (profile.fiat_balance || 0) + tx.amount,
-        })
-        .eq("id", tx.uid);
-
-      await supabase
-        .from("tradify_pesa")
-        .update({ status: "completed" })
-        .eq("id", tx.id);
-
-      return json({ success: true });
+    if (authError || !user) {
+      return json({ error: "User not authenticated." }, 401);
     }
 
-    // ───────── STK INIT ─────────
-    if (req.method !== "POST") {
-      return json({ error: "Method not allowed" }, 405);
+    // -----------------------------
+    // Body
+    // -----------------------------
+    const { phone, amount } = await req.json();
+
+    if (!phone || !amount) {
+      return json({ error: "Missing fields." }, 400);
     }
 
-    const body = await req.json();
-    const { uid, phone, amount } = body;
+    // -----------------------------
+    // Normalize Phone
+    // -----------------------------
+    let phoneNumber = phone.toString().trim();
 
-    if (!uid || !phone || !amount) {
-      return json({ error: "Missing fields", body }, 400);
+    if (phoneNumber.startsWith("254")) {
+      phoneNumber = "0" + phoneNumber.substring(3);
     }
 
-    const reference = `DEP-${crypto.randomUUID().slice(0, 8)}`;
+    const reference = crypto.randomUUID();
 
-    const { error: insertError } = await supabase
+    // -----------------------------
+    // Save Pending Transaction
+    // -----------------------------
+    const { error: insertError } = await admin
       .from("tradify_pesa")
       .insert({
-        uid,
-        phone,
+        uid: user.id,
+        phone: phoneNumber,
         amount,
-        reference,
+        type: "deposit",
         status: "pending",
       });
 
     if (insertError) {
-      return json({ error: insertError.message }, 500);
+      return json({
+        error: insertError.message,
+      }, 500);
     }
 
-    const res = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
-      method: "POST",
-      headers: {
-        Authorization: PAYHERO_BASIC_AUTH,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount,
-        phone_number: phone,
-        channel_id: Number(PAYHERO_ACCOUNT_ID),
-        provider: "m-pesa",
-        external_reference: reference,
-        callback_url: `${PROJECT_URL}/functions/v1/mpesa-deposit/callback`,
-      }),
-    });
+    // -----------------------------
+    // Call PayHero
+    // -----------------------------
+    const response = await fetch(
+      "https://backend.payhero.co.ke/api/v2/payments",
+      {
+        method: "POST",
+        headers: {
+  Authorization: PAYHERO_BASIC_AUTH,
+  "Content-Type": "application/json",
+},
+        body: JSON.stringify({
+          amount,
+          phone_number: phoneNumber,
+          channel_id: Number(PAYHERO_CHANNEL_ID),
+          provider: "m-pesa",
+          external_reference: reference,
+          callback_url:
+            `${PROJECT_URL}/functions/v1/mpesa-callback`,
+        }),
+      }
+    );
 
-    const data = await res.json();
+    const result = await response.json();
 
-    if (!res.ok || !data?.success) {
-      await supabase
-        .from("tradify_pesa")
-        .update({ status: "failed" })
-        .eq("reference", reference);
-
-      return json({ error: "STK push failed", data }, 400);
+    if (!response.ok || !result.success) {
+      return json(result, 400);
     }
+
+    await admin
+      .from("tradify_pesa")
+      .update({
+        reference: result.reference,
+        checkout_request_id: result.CheckoutRequestID,
+      })
+      .eq("uid", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1);
 
     return json({
       success: true,
-      message: "STK push sent",
-      reference,
+      message: "STK sent.",
+      reference: result.reference,
     });
   } catch (err) {
-    console.error("EDGE ERROR:", err);
-    return json({ error: "Internal server error" }, 500);
+    console.error(err);
+
+    return json({
+      error: err instanceof Error ? err.message : "Internal server error",
+    }, 500);
   }
-});
+});  
