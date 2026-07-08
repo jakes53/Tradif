@@ -69,9 +69,9 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         setAmount("");
         return;
       }
-// ---------------- Withdraw ----------------
-toast.info("Withdraw not connected yet.");
-      
+
+      // ---------------- Withdraw ----------------
+      toast.info("Withdraw not connected yet.");
     } catch (err) {
       console.error(err);
       toast.error("Something went wrong.");
