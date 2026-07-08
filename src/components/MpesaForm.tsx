@@ -69,57 +69,9 @@ export default function MpesaCashForm({ type }: MpesaCashFormProps) {
         setAmount("");
         return;
       }
-
-      // ---------------- Withdraw ----------------
-const { data: profile, error: profileError } = await supabase
-  .from("profiles")
-  .select("fiat_balance, apk_balance")
-  .eq("id", session.user.id)
-  .single();
-
-if (profileError || !profile) {
-  toast.error("Failed to fetch user balances.");
-  return;
-}
-
-if (numericAmount > profile.fiat_balance) {
-  toast.error("Insufficient balance.");
-  return;
-}
-
-// 1️⃣ Update balances
-const { error: updateError } = await supabase
-  .from("profiles")
-  .update({
-    fiat_balance: profile.fiat_balance - numericAmount,
-    apk_balance: (profile.apk_balance || 0) + numericAmount, // ✅ ACCUMULATE
-  })
-  .eq("id", session.user.id);
-
-if (updateError) {
-  toast.error(updateError.message);
-  return;
-}
-
-// 2️⃣ Log withdraw request
-const { error: cashError } = await supabase
-  .from("tradify_cash")
-  .insert({
-    uid: session.user.id,
-    type: "Cash Withdraw",
-    amount: numericAmount,
-    phone,
-    status: "pending",
-  });
-
-if (cashError) {
-  toast.success("Withdrawal successful.");
-  return;
-}
-
-toast.success("Withdrawal successfully initiated.");
-setAmount("");
-setPhone("");
+// ---------------- Withdraw ----------------
+toast.info("Withdraw not connected yet.");
+      
     } catch (err) {
       console.error(err);
       toast.error("Something went wrong.");
