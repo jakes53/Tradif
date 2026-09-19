@@ -303,28 +303,9 @@ const Dashboard = () => {
   </Link>
 </Button>
 
-    <Button asChild variant="outline" className="w-full justify-start py-6">
-  <Link to="/strategy" className="flex items-center">
-    <Repeat className="mr-3 h-6 w-6 text-purple-600"  />
-    Copy Trading
-  </Link>
-</Button>
-    <Button
-      variant="outline"
-      className="w-full justify-start py-6"
-      onClick={() => navigate("/wallet")}
-    >
-      <DollarSign className="mr-3 h-6 w-6 text-green-600" />
-      Withdrawals
-    </Button>
-    <Button
-      variant="outline"
-      className="w-full justify-start py-6"
-      onClick={() => navigate("/wallet")}
-    >
-      <Banknote className="mr-3 h-6 w-6 text-emerald-500" />
-     Deposits
-    </Button>
+    
+    
+    
     <Button
       variant="outline"
       className="w-full justify-start py-6"

@@ -25,11 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group"; 
+import { Upload, Zap, FlaskConical, Check } from "lucide-react";
 import ActiveMarketTrade from "@/components/trade/ActiveMarketTrade"; 
 interface TradeFormProps {
   cryptocurrencies: Cryptocurrency[];
@@ -42,6 +38,199 @@ declare global {
   }
 }
 
+type Mode = "demo" | "real";
+
+/* -------------------------------------------------------------------------- */
+/* Mode-switch animation helpers                                              */
+/* -------------------------------------------------------------------------- */
+
+/** Self-contained keyframes so no tailwind.config changes are needed. */
+const ModeAnimationStyles: React.FC = () => (
+  <style>{`
+    @keyframes tf-ripple {
+      from { transform: scale(0); opacity: 0.55; }
+      to   { transform: scale(4); opacity: 0; }
+    }
+    @keyframes tf-shine {
+      from { transform: translateX(-150%) skewX(-20deg); }
+      to   { transform: translateX(450%) skewX(-20deg); }
+    }
+    @keyframes tf-icon-pop {
+      0%   { opacity: 0; transform: rotate(-180deg) scale(0.3); }
+      70%  { opacity: 1; transform: rotate(12deg) scale(1.3); }
+      100% { opacity: 1; transform: none; }
+    }
+    @keyframes tf-slide-left {
+      from { opacity: 0; transform: translateX(-28px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes tf-slide-right {
+      from { opacity: 0; transform: translateX(28px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes tf-fade-up {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes tf-wash {
+      0%   { transform: translateX(-110%); opacity: 1; }
+      100% { transform: translateX(110%); opacity: 0; }
+    }
+    .tf-ripple      { animation: tf-ripple 0.7s ease-out both; }
+    .tf-shine       { animation: tf-shine 0.8s ease-out both; }
+    .tf-icon-pop    { animation: tf-icon-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    .tf-slide-left  { animation: tf-slide-left 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .tf-slide-right { animation: tf-slide-right 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .tf-fade-up     { animation: tf-fade-up 0.4s ease-out both; }
+    .tf-wash        { animation: tf-wash 0.85s ease-in-out both; }
+    .tf-wash-green  { background: linear-gradient(90deg, transparent, rgba(34,197,94,0.4), transparent); }
+    .tf-wash-blue   { background: linear-gradient(90deg, transparent, rgba(59,130,246,0.4), transparent); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tf-ripple, .tf-shine, .tf-icon-pop, .tf-slide-left, .tf-slide-right,
+      .tf-fade-up, .tf-wash { animation: none; }
+    }
+  `}</style>
+);
+
+/** Tweens smoothly from the previous value to the new one (e.g. on mode switch). */
+const AnimatedMoney: React.FC<{ value: number; duration?: number }> = ({
+  value,
+  duration = 600,
+}) => {
+  const [display, setDisplay] = useState(value);
+  const current = useRef(value);
+
+  useEffect(() => {
+    const from = current.current;
+    if (from === value) return;
+
+    const start = performance.now();
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const next = t >= 1 ? value : from + (value - from) * eased;
+      current.current = next;
+      setDisplay(next);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration]);
+
+  return <>${display.toFixed(2)}</>;
+};
+
+/**
+ * Class strings are written out in full (not built dynamically) so Tailwind
+ * can see them at build time.
+ */
+const BASE_BTN =
+  "relative flex select-none flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border-b-4 px-3 py-3 font-bold " +
+  "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+const MODE_CONFIG = {
+  real: {
+    label: "Real Account",
+    sub: "Live funds",
+    Icon: Zap,
+    on:
+      "scale-[1.04] -translate-y-0.5 border-green-800 bg-gradient-to-b from-green-400 to-green-600 text-white " +
+      "shadow-[0_0_24px_rgba(34,197,94,0.65)] ring-2 ring-green-300/70 ring-offset-2 ring-offset-background focus-visible:ring-green-300",
+    off:
+      "border-gray-400 bg-gradient-to-b from-gray-100 to-gray-200 text-gray-600 opacity-80 " +
+      "hover:-translate-y-0.5 hover:opacity-100 hover:from-green-50 hover:to-green-100 hover:border-green-400 " +
+      "active:translate-y-0.5 active:border-b-2 " +
+      "dark:border-gray-900 dark:from-gray-700 dark:to-gray-800 dark:text-gray-400 dark:hover:from-green-900/40 dark:hover:to-green-900/20 dark:hover:border-green-700 " +
+      "focus-visible:ring-green-400",
+    idleIcon: "text-green-500",
+  },
+  demo: {
+    label: "Demo Account",
+    sub: "Virtual funds",
+    Icon: FlaskConical,
+    on:
+      "scale-[1.04] -translate-y-0.5 border-blue-800 bg-gradient-to-b from-blue-400 to-blue-600 text-white " +
+      "shadow-[0_0_24px_rgba(59,130,246,0.65)] ring-2 ring-blue-300/70 ring-offset-2 ring-offset-background focus-visible:ring-blue-300",
+    off:
+      "border-gray-400 bg-gradient-to-b from-gray-100 to-gray-200 text-gray-600 opacity-80 " +
+      "hover:-translate-y-0.5 hover:opacity-100 hover:from-blue-50 hover:to-blue-100 hover:border-blue-400 " +
+      "active:translate-y-0.5 active:border-b-2 " +
+      "dark:border-gray-900 dark:from-gray-700 dark:to-gray-800 dark:text-gray-400 dark:hover:from-blue-900/40 dark:hover:to-blue-900/20 dark:hover:border-blue-700 " +
+      "focus-visible:ring-blue-400",
+    idleIcon: "text-blue-500",
+  },
+} as const;
+
+const ModeButton: React.FC<{
+  mode: Mode;
+  active: boolean;
+  /** Increments on every switch so the one-shot effects replay. */
+  switchId: number;
+  onSelect: (mode: Mode) => void;
+}> = ({ mode, active, switchId, onSelect }) => {
+  const { label, sub, Icon, on, off, idleIcon } = MODE_CONFIG[mode];
+  const animate = active && switchId > 0;
+
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      aria-label={label}
+      onClick={() => onSelect(mode)}
+      className={`${BASE_BTN} ${active ? on : off}`}
+    >
+      {/* One-shot ripple + shine when this mode becomes active */}
+      {animate && (
+        <>
+          <span
+            key={`ripple-${switchId}`}
+            aria-hidden
+            className="tf-ripple pointer-events-none absolute left-1/2 top-1/2 -ml-12 -mt-12 h-24 w-24 rounded-full bg-white/60"
+          />
+          <span
+            key={`shine-${switchId}`}
+            aria-hidden
+            className="tf-shine pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+          />
+        </>
+      )}
+
+      <span className="relative flex items-center gap-1.5 text-sm">
+        <span
+          key={active ? `icon-${switchId}` : "icon-idle"}
+          className={`inline-flex ${animate ? "tf-icon-pop" : ""} ${
+            active ? "" : idleIcon
+          }`}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        {label}
+        {active && <Check className="h-4 w-4" strokeWidth={3} />}
+      </span>
+
+      <span className="relative flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider opacity-85">
+        {active && (
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+          </span>
+        )}
+        {active ? `Active · ${sub}` : sub}
+      </span>
+    </button>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Component                                                                  */
+/* -------------------------------------------------------------------------- */
+
 const TradeForm: React.FC<TradeFormProps> = ({
   cryptocurrencies,
   selectedCrypto,
@@ -51,7 +240,8 @@ const TradeForm: React.FC<TradeFormProps> = ({
   const [amount, setAmount] = useState("");
   const [isTrading, setIsTrading] = useState(false);
   const [selectedPair, setSelectedPair] = useState(`${selectedCrypto.symbol}/USDT`);
-  const [tradingMode, setTradingMode] = useState<"demo" | "real">("demo");
+  const [tradingMode, setTradingMode] = useState<Mode>("demo");
+  const [switchId, setSwitchId] = useState(0); // bumps on every real <-> demo switch
   const [demoBalance, setDemoBalance] = useState<number>(700);
   const [realBalance, setRealBalance] = useState<number>(0);
 
@@ -288,74 +478,84 @@ if (tradingMode === "real") {
 
 
   const handleModeChange = (value: string) => {
-  if (value === "demo" || value === "real") {
-    if (isTrading) {
-      // Stop the ongoing trade
-      if (typeof window.__stopTrade === "function") {
-        window.__stopTrade();
-      }
+  if (value !== "demo" && value !== "real") return;
+  if (value === tradingMode) return; // already active, nothing to switch
 
-      toast.warning(
-        `Switched to ${value.toUpperCase()} mode. Previous trade has been cancelled.`,
-        {
-          style: {
-            backgroundColor: "#facc15", // yellow
-            color: "#000",
-            fontWeight: "bold",
-          },
-        }
-      );
-
-      setIsTrading(false);
-      setAmount("");
-      setTriggerRealSim(false);
+  if (isTrading) {
+    // Stop the ongoing trade
+    if (typeof window.__stopTrade === "function") {
+      window.__stopTrade();
     }
 
-    setTradingMode(value);
+    toast.warning(
+      `Switched to ${value.toUpperCase()} mode. Previous trade has been cancelled.`,
+      {
+        style: {
+          backgroundColor: "#facc15", // yellow
+          color: "#000",
+          fontWeight: "bold",
+        },
+      }
+    );
+
+    setIsTrading(false);
+    setAmount("");
+    setTriggerRealSim(false);
   }
+
+  setTradingMode(value);
+  setSwitchId((id) => id + 1); // replays the switch animations
 };
 
+  const isReal = tradingMode === "real";
 
   return (
     <div className="space-y-4">
-      {/* Toggle Mode */}
-      <div className="flex items-center justify-between">
-        <ToggleGroup
-          type="single"
-          value={tradingMode}
-          onValueChange={handleModeChange}
-          className="flex gap-2"
-        >
-          <ToggleGroupItem
-            value="real"
-            className={`rounded px-4 py-1 text-sm font-medium border transition-colors duration-200 ${
-              tradingMode === "real"
-                ? "bg-green-600 text-white border-green-600"
-                : "border-green-600 text-green-600 hover:bg-green-100"
-            }`}
-          >
-            Real Account
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="demo"
-            className={`rounded px-4 py-1 text-sm font-medium border transition-colors duration-200 ${
-              tradingMode === "demo"
-                ? "bg-blue-600 text-white border-blue-600"
-                : "border-blue-600 text-blue-600 hover:bg-blue-100"
-            }`}
-          >
-            Demo Account
-          </ToggleGroupItem>
-        </ToggleGroup>
+      <ModeAnimationStyles />
+
+      {/* Toggle Mode: two separate buttons */}
+      <div
+        role="radiogroup"
+        aria-label="Trading mode"
+        className="grid grid-cols-2 gap-3 px-1 pt-1"
+      >
+        <ModeButton
+          mode="real"
+          active={isReal}
+          switchId={switchId}
+          onSelect={handleModeChange}
+        />
+        <ModeButton
+          mode="demo"
+          active={!isReal}
+          switchId={switchId}
+          onSelect={handleModeChange}
+        />
       </div>
 
-      {/* Mode Label */}
+      {/* Mode Banner. Re-keyed so it slides in from the side of the chosen button. */}
       <div
-        className={`text-sm font-bold ${
-          tradingMode === "real" ? "text-green-400" : "text-blue-400"
+        key={tradingMode}
+        className={`flex items-center justify-between rounded-md border-l-4 px-3 py-2 text-sm font-bold ${
+          isReal
+            ? "tf-slide-left border-green-500 bg-green-500/10 text-green-400"
+            : "tf-slide-right border-blue-500 bg-blue-500/10 text-blue-400"
         }`}
       >
-        Mode: {tradingMode === "real" ? "Live Market Execution" : "Demo Trading"}
+        <span className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-70" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-current" />
+          </span>
+          Mode: {isReal ? "Live Market Execution" : "Demo Trading"}
+        </span>
+        <span
+          className={`rounded px-2 py-0.5 text-[10px] font-extrabold tracking-widest text-white ${
+            isReal ? "bg-green-600" : "bg-blue-600"
+          }`}
+        >
+          {isReal ? "LIVE" : "DEMO"}
+        </span>
       </div>
 
       {/* Live Dashboard */}
@@ -385,18 +585,30 @@ if (tradingMode === "real") {
       </div>
 
       {/* Trade Form */}
-      <Card className="w-full">
+      <Card
+        className={`relative w-full overflow-hidden border-t-4 transition-colors duration-500 ${
+          isReal ? "border-t-green-500" : "border-t-blue-500"
+        }`}
+      >
+        {/* Colour wash that sweeps across the card on every switch */}
+        {switchId > 0 && (
+          <div
+            key={switchId}
+            aria-hidden
+            className={`tf-wash pointer-events-none absolute inset-0 z-10 ${
+              isReal ? "tf-wash-green" : "tf-wash-blue"
+            }`}
+          />
+        )}
+
         <CardHeader>
-          <CardTitle className="mb-1">
+          <CardTitle key={tradingMode} className="tf-fade-up mb-1">
             {tradingMode === "real" ? "Place" : "Demo"} Trade - {baseCrypto.name}
           </CardTitle>
           <div className="text-sm text-gray-600 dark:text-gray-300">
             Balance:{" "}
-            <span className="text-2xl font-bold">
-              {tradingMode === "real"
-  ? formatCurrency(realBalance)
-  : formatCurrency(demoBalance)}
-
+            <span className="text-2xl font-bold tabular-nums">
+              <AnimatedMoney value={isReal ? realBalance : demoBalance} />
             </span>
           </div>
         </CardHeader>
@@ -413,7 +625,7 @@ if (tradingMode === "real") {
     <TabsTrigger
       key={type}
       value={type}
-      className={`rounded px-4 py-1 text-sm font-medium border transition-colors duration-200 ${
+      className={`rounded px-4 py-1 text-sm font-medium border transition-colors duration-500 ${
         tradeType === type
           ? tradingMode === "real"
             ? "bg-green-600 text-white border-green-600"
@@ -513,7 +725,7 @@ if (tradingMode === "real") {
                 {/* Submit */}
                 <Button
                   type="submit"
-                  className={`w-full text-white ${
+                  className={`w-full text-white transition-colors duration-500 ${
                     tradeType === "stop"
                       ? "bg-gray-800"
                       : tradingMode === "real"

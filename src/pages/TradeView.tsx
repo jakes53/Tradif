@@ -2,9 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useUser } from "@supabase/auth-helpers-react";
+import { supabase } from "@/lib/supabaseClient";
 import PriceChart from "@/components/PriceChart";
 import LiveOrderBook from "@/components/LiveOrderBook";
 import TradeForm from "@/components/TradeForm";
+import AITradingAssistant from "@/components/AITradingAssistant";
 import RecentTrades from "@/components/trade/RecentTrades";
 import MarketTable from "@/components/MarketTable";
 import  BotLogPanel  from "@/components/BotLogPanel";
@@ -15,7 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-    
+import { Button } from "@/components/ui/button";
+
 import { Cryptocurrency } from "@/types/crypto";
 import { formatLargeNumber } from "@/utils/formatters";
 import { fetchCryptocurrencies } from "@/services/cryptoApi";
@@ -25,6 +29,23 @@ const TradeView = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const cryptoParam = searchParams.get("crypto");
+
+  const user = useUser();
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [balance, setBalance] = useState(0);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("fiat_balance")
+        .eq("id", user.id)
+        .single();
+      if (!error && data) setBalance(data.fiat_balance ?? 0);
+    };
+    fetchBalance();
+  }, [user]);
 
   const { data: cryptocurrencies = mockCryptocurrencies, isLoading, isError } = useQuery({
     queryKey: ["cryptocurrencies"],
@@ -95,7 +116,7 @@ const TradeView = () => {
             basePrice={selectedCrypto.currentPrice}
             priceChangePercent={selectedCrypto.priceChangePercentage24h}
           />
-<LiveOrderBook />
+          <LiveOrderBook />
 
           <Card className="mt-6">
             <CardHeader className="pb-2">
@@ -144,7 +165,28 @@ const TradeView = () => {
             <CardHeader>
               <CardTitle>Trade Dashboard</CardTitle>
             </CardHeader>
+
             <CardContent>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mb-4"
+                onClick={() => setShowAiAssistant((prev) => !prev)}
+              >
+                🤖 {showAiAssistant ? "Hide" : "Get"} AI Market Analysis
+              </Button>
+
+              {showAiAssistant && (
+                <AITradingAssistant
+                  cryptocurrencies={liveCryptos}
+                  selectedCrypto={selectedCrypto}
+                  balance={balance}
+                  onDepositClick={() => {
+                    // route to your deposit/funding page
+                  }}
+                />
+              )}
+
               <TradeForm
                 cryptocurrencies={liveCryptos}
                 selectedCrypto={selectedCrypto}
