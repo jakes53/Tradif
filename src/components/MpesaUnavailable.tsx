@@ -36,7 +36,7 @@ const MpesaUnavailable = ({ onSTKToggle }: Props) => {
           <Phone size={24} />
         </div>
         <h3 className="text-lg font-semibold mt-2">M-Pesa Paybill Deposit</h3>
-        <p className="text-sm text-slate-400 mt-1">STK Push is currently unavailable.</p>
+        <p className="text-sm text-slate-400 mt-1">STK Push is below.</p>
       </div>
 
       <div className="space-y-3 text-sm">
@@ -85,15 +85,7 @@ const MpesaUnavailable = ({ onSTKToggle }: Props) => {
           >
             jeffreycouture43@gmail.com
           </a>{" "}
-          or WhatsApp us at{" "}
-          <a
-            href={`https://wa.me/${whatsNo}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-orange-400 underline"
-          >
-            {whatsNo || "loading..."}
-          </a>
+          
         </div>
       </div>
     </div>

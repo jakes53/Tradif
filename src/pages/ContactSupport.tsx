@@ -30,7 +30,7 @@ const ContactSupport = () => {
           <div className="crypto-card p-6">
             <Phone className="h-8 w-8 text-crypto-bright-teal mb-4" />
             <h3 className="text-xl font-bold mb-2">WhatsApp</h3>
-            <p>+1 (864) 501-7235</p>
+            <p>0791818807</p>
             <p className="text-gray-400 text-sm mt-1">Support Admin</p>
           </div>
 

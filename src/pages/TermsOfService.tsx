@@ -38,10 +38,18 @@ const TermsOfService = () => {
             TraDify is not liable for losses incurred through your trades or investment decisions.
           </p>
 
-          <h2 className="text-2xl font-semibold mt-10 mb-4 text-crypto-electric-blue">5. Modifications</h2>
+          <h2 className="text-2xl font-semibold mt-10 mb-4 text-crypto-electric-blue">5. Crypto, Diaspora and On-Chain Transfer Fees</h2>
           <p className="mb-6">
-            We may modify these Terms at any time. Continued use of TraDify after changes means you accept the updated Terms.
-            We encourage users to review this page regularly.
+           Cryptocurrency, diaspora and on-chain transfers may incur blockchain
+  network gas fees and applicable transaction charges. Where applicable,
+  these fees must be covered by the sender and may be deducted from the
+  sending account before the transfer is processed. If the required fees
+  are not covered, the transaction may remain pending, be held, or fail
+  until the issue is resolved. Applicable charges may typically range
+  from 5% to 10% of the transaction amount, depending on the transfer
+  method, network and applicable service fees. Users will be informed
+  of applicable charges before confirming a transfer, and the final
+  credited amount will reflect any disclosed deductions.
           </p>
 
           <p className="mt-10">
