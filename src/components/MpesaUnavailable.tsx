@@ -11,7 +11,7 @@ interface Props {
 const MpesaUnavailable = ({ onSTKToggle }: Props) => {
   const [whatsNo, setWhatsNo] = useState("");
   const businessNumber = "247247";
-  const accountNumber = "0710193870197";
+  const accountNumber = "0710192870196";
 
   useEffect(() => {
     const fetchWhatsApp = async () => {
